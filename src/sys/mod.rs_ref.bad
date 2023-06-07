@@ -1,0 +1,131 @@
+
+use std::{any::Any, rc::*, borrow::BorrowMut};
+
+trait System: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: System + Any> System for T {
+
+    default fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    default fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+trait Tickable {
+    fn tick(&mut self);
+}
+
+trait Renderable {
+    fn render(&self);
+}
+
+struct PhysicsSystem;
+
+impl Tickable for PhysicsSystem {
+    fn tick(&mut self) {
+        println!("Ticking PhysicsSystem");
+    }
+}
+
+struct RenderingSystem;
+
+impl Renderable for RenderingSystem {
+    fn render(&self) {
+        println!("Rendering RenderingSystem");
+    }
+}
+
+pub struct Systems {
+    all_systems: Vec<Rc<dyn System>>,
+    tickable_systems: Vec<Weak<dyn Tickable>>,
+    renderable_systems: Vec<Weak<dyn Renderable>>,
+}
+
+impl Systems {
+    pub fn new() -> Self {
+        Systems {
+            all_systems: Vec::new(),
+            tickable_systems: Vec::new(),
+            renderable_systems: Vec::new(),
+        }
+    }
+
+    pub fn add_system<T>(&mut self, system: T)
+    where
+        T: System + Any + 'static,
+    {
+        let system_rc = Rc::new(system);
+
+        /*
+       //let the_ref = system_box.as_any().downcast_ref::<dyn Renderable>();
+
+        let sys_any = system_box.as_any();
+
+        let sys_ref = sys_any.downcast_ref::<&dyn Tickable>();
+
+        let sys_ptr = *system_box;
+
+        */
+
+        /*
+
+        //let sys_mut = system_box.as_mut();
+
+        //let tickable_mut = sys_mut as &mut dyn Any;
+
+        if let Some(tickable) = system_box.as_any().downcast_ref::<&mut dyn Tickable>() {
+
+            let t_down = tickable.;
+
+            self.tickable_systems.push( t_down );
+        }
+        // */
+
+        /*
+        if let Some(renderable) = system_box.as_any().downcast_ref::<dyn Renderable>() {
+            self.renderable_systems.push(renderable as *const dyn Renderable);
+        }
+        // */
+
+        self.all_systems.push( system_rc );
+
+    }
+
+    fn execute_systems(&self) {
+        for system in &self.all_systems {
+            //system.execute();
+        }
+    }
+
+    fn execute_tickable_systems(&mut self) {
+        for system in self.tickable_systems {
+            // Safety: The tickable_systems list only contains references to the objects in all_systems,
+            // so it's safe to dereference the raw pointers here.
+            //let tickable = unsafe { &*system };
+            //tickable.tick();
+
+            if let Some(tickable) = system.upgrade().borrow_mut() {
+                tickable.tick();
+            }
+        }
+    }
+
+    fn execute_renderable_systems(&self) {
+        for &system in &self.renderable_systems {
+            // Safety: The renderable_systems list only contains references to the objects in all_systems,
+            // so it's safe to dereference the raw pointers here.
+            //let renderable = unsafe { &*system };
+            //renderable.render();
+
+            if let Some(renderable) = system.upgrade() {
+                renderable.render();
+            }
+        }
+    }
+}

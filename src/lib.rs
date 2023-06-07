@@ -1,3 +1,11 @@
+#![allow(dead_code)]
+
+mod com;
+mod ent;
+mod sys;
+
+
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
