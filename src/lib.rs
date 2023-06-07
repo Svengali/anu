@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
 mod com;
-mod ent;
+//mod ent;
 mod sys;
 
 
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+pub fn print( str: String ) {
+    println!( "Test {}", str );
 }
 
 #[cfg(test)]
