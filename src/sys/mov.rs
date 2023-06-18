@@ -17,7 +17,11 @@ impl Move {
 }
 
 impl System for Move {
-    fn update(&self) {
+    fn startup(&mut self) {
+        todo!()
+    }
+
+    fn shutdown(&mut self) {
         todo!()
     }
 }
