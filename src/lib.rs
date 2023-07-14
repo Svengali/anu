@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use tracing::{span, Level, field::AsField};
+use tracing::{span, Level, field::{AsField, Visit}};
 
 
 mod com;
@@ -40,7 +40,30 @@ pub fn print( str: String ) {
 
 use tracing_subscriber::Layer;
 
-pub struct CustomLayer;
+
+pub struct PrintVisitor {
+}
+
+impl Visit for PrintVisitor {
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        //println!( "{} = {}", field.name(), value. );
+        let name = field.name();
+        let v = format!("HEYA {name:?}: {value:?}");
+        println!( "{}", v );
+    }
+}
+
+
+
+pub struct CustomLayer {
+    depth: u32,
+}
+
+impl Default for CustomLayer {
+    fn default() -> Self {
+        Self { depth: Default::default() }
+    }
+}
 
 impl<S> Layer<S> for CustomLayer
 where
@@ -60,6 +83,12 @@ where
         for field in event.fields() {
             println!("  field {}", field);
         }
+
+        //let mut visitor = PrintVisitor::new( &mut event.fields() );
+
+        let mut visitor = PrintVisitor {};
+
+        event.record( &mut visitor );
 
         println!("DEBUG");
         println!( "  Debug={:?}", event.metadata())
