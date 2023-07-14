@@ -2,7 +2,7 @@
 
 //use super::*;
 
-use super::System;
+use super::{System, Ticks};
 
 pub struct Move {
     pub v: i32,
@@ -18,10 +18,14 @@ impl Move {
 
 impl System for Move {
     fn startup(&mut self) {
-        todo!()
     }
 
     fn shutdown(&mut self) {
-        todo!()
+    }
+
+}
+
+impl Ticks for Move {
+    fn tick(&mut self) {
     }
 }

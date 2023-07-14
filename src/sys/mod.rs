@@ -1,11 +1,10 @@
-use std::borrow::BorrowMut;
-use std::{cell::RefCell, borrow::Borrow};
-use std::rc::Rc;
+use std::{borrow::Borrow};
 
 use tracing::{span};
 
 pub mod mov;
 
+#[derive(Copy, Clone)]
 pub enum Status {
     Invalid,
     Starting,
@@ -13,76 +12,86 @@ pub enum Status {
     Stopping,
 }
 
-pub trait Info {
-}
 
 pub trait System {
     fn startup(&mut self);
     fn shutdown(&mut self);
 }
 
+
+pub trait Ticks {
+    fn tick(&mut self);
+}
+
+
 struct SystemDetail {
-    system: Rc<RefCell<dyn System>>,
+    priority: u32,
+    system: Box<dyn System>,
     status: Status,
 }
 
+/*
+impl PartialOrd for SystemDetail {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.priority.cmp(&other.priority))
+    }
+}
+
+impl Ord for SystemDetail {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.priority.cmp(&other.priority)
+    }
+}
+
+impl PartialEq for SystemDetail {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority
+    }
+}
+impl Eq for SystemDetail {}
+*/
+
+
 pub struct Systems {
     systems: Vec<SystemDetail>,
-    render_systems: Vec<Rc<RefCell<dyn Render>>>,
-    physics_systems: Vec<Rc<RefCell<dyn Physics>>>,
+}
+
+pub struct Tickables {
+    tickables: Vec<Box<dyn Ticks>>,
+}
+
+impl Tickables {
+    pub fn add( &mut self, tick: Box<dyn Ticks> ) {
+        self.tickables.push( tick );
+    }
 }
 
 impl Systems {
     pub fn new() -> Self {
         Systems {
             systems: Vec::new(),
-            render_systems: Vec::new(),
-            physics_systems: Vec::new(),
         }
     }
 
-    pub fn add<T: 'static + System + Info>(&mut self, system: T) -> Rc<RefCell<T>> {
-        let rc_system = Rc::new(RefCell::new(system));
-        rc_system.borrow_mut().startup();
-        self.systems.push(SystemDetail {
-            system: Rc::clone(&rc_system) as Rc<RefCell<dyn System>>,
-            status: Status::Starting, // system is now in the "Starting" state
-        });
-        rc_system
+    pub fn add( &mut self, priority: u32, mut system: Box<dyn System> ) {
+
+        system.startup();
+
+        let detail = SystemDetail {
+            priority,
+            system: system,
+            status: Status::Starting,
+        };
+
+        self.systems.push( detail );
+
+        self.systems.sort_unstable_by_key( |v| v.priority );
+
+
+        //detail.system.startup();
     }
 
-    /*
-    pub fn update(&mut self) {
-        for system in &mut self.systems {
-            system.update();
-        }
-    }
-    */
 
-    pub fn render(&self) {
-        for system in &self.render_systems {
-
-            //let sys = system.get_mut();
-            //sys.render();
-
-        }
-    }
-
-    pub fn apply_physics(&mut self) {
-        for system in &mut self.physics_systems {
-            //let mut thing = system.borrow_mut();
-            //thing.apply_physics();
-        }
-    }
 }
 
-
-
-trait Render {
-    fn render(&mut self);
-}
-
-trait Physics {
-    fn apply_physics(&mut self);
-}
 
