@@ -2,7 +2,9 @@
 
 #![allow(dead_code)]
 
-use tracing::{span, Level, field::{AsField, Visit}, info};
+use std::time::Instant;
+
+use tracing::{span, Level, field::{Visit}, info};
 
 
 mod com;
@@ -84,7 +86,18 @@ impl Default for CustomLayer {
 
 
 #[derive(Debug)]
-struct SpanDepth(usize);
+struct SpanInfo {
+    pub depth: usize,
+    pub new_time: Instant,
+    pub start_time: Instant,
+    pub end_time: Instant,
+}
+
+impl Default for SpanInfo {
+    fn default() -> Self {
+        Self { depth: Default::default(), new_time: Instant::now(), start_time: Instant::now(), end_time: Instant::now() }
+    }
+}
 
 impl CustomLayer {
     
@@ -101,8 +114,8 @@ impl CustomLayer {
         let cur_count = if let Some(cur_span_id) = ctx.current_span().id() {
             let cur = ctx.span( cur_span_id ).unwrap();
             let cur_ext = cur.extensions();
-            let cur_span_data = cur_ext.get::<SpanDepth>().unwrap();
-            cur_span_data.0
+            let cur_span_data = cur_ext.get::<SpanInfo>().unwrap();
+            cur_span_data.depth
         } else {
             0
         };
@@ -133,7 +146,7 @@ where
         let cur_count = if let Some(cur_span_id) = ctx.current_span().id() {
             let cur = ctx.span( cur_span_id ).unwrap();
             let cur_ext = cur.extensions();
-            let cur_span_data = cur_ext.get::<SpanDepth>().unwrap();
+            let cur_span_data = cur_ext.get::<SpanInfo>().unwrap();
             cur_span_data.0
         } else {
             0
@@ -158,7 +171,7 @@ where
         };
 
         let prefix = CustomLayer::prefix(&ctx, sym, event.metadata().target());
-        print!("{}", prefix );
+        print!("{}-", prefix );
 
         let mut visitor = PrintVisitor { visited: false };
         event.record( &mut visitor );
@@ -203,7 +216,7 @@ where
         true
     }
 
-    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: tracing_subscriber::layer::Context<'_, S>) {
+    fn on_new_span(&self, _attrs: &span::Attributes<'_>, id: &span::Id, ctx: tracing_subscriber::layer::Context<'_, S>) {
         //let _ = (attrs, id, ctx);
 
         //println!("on_new_span");
@@ -211,8 +224,8 @@ where
         let cur_count = if let Some(cur_span_id) = ctx.current_span().id() {
             let cur = ctx.span( cur_span_id ).unwrap();
             let cur_ext = cur.extensions();
-            let cur_span_data = cur_ext.get::<SpanDepth>().unwrap();
-            cur_span_data.0
+            let cur_span_data = cur_ext.get::<SpanInfo>().unwrap();
+            cur_span_data.depth
         } else {
             0
         };
@@ -226,10 +239,16 @@ where
 
 
         // And store our data
+        
 
-        let storage = SpanDepth { 0: cur_count + 1 };
+        let storage = SpanInfo { 
+            depth: cur_count + 1, 
+            new_time: Instant::now(), 
+            start_time: Instant::now(),
+            end_time: Instant::now(),
+        };
 
-        extensions.insert::<SpanDepth>(storage);
+        extensions.insert::<SpanInfo>(storage);
 
     }
 
@@ -257,8 +276,14 @@ where
 
         let prefix = CustomLayer::prefix(&ctx, ">", "" );
 
-        println!("{}-------------", prefix )
-        
+
+        let cur = ctx.span( id ).unwrap();
+        let mut cur_ext = cur.extensions_mut();
+        let cur_span_data = cur_ext.get_mut::<SpanInfo>().unwrap();
+
+        cur_span_data.start_time = Instant::now();
+
+        println!("{}-------->>>{}>>>----", prefix, cur.name() );
 
         //println!("{}{:|<1$}", "", (cur_count + 1));
 
@@ -269,15 +294,27 @@ where
 
         //let cur_span_id = ctx.current_span().id().clone();
 
-        let thing = ctx.lookup_current();
-
         let prefix = CustomLayer::prefix(&ctx, "<", "");
 
-        if let Some(span) = thing {
-            println!("{}|--{:?}--", prefix, span.metadata() )
-        } else {
-            println!("{}|--{}--", prefix, "NO METADATA" )
-        }
+        let dur_usec: u128;
+
+        let Some(cur) = ctx.span( id ) else { todo!() };
+        let mut cur_ext = cur.extensions_mut();
+        let cur_span_data = cur_ext.get_mut::<SpanInfo>().unwrap();
+
+        cur_span_data.end_time = Instant::now();
+
+        let duration = cur_span_data.end_time - cur_span_data.start_time;
+
+        dur_usec = duration.as_micros();
+
+        //cur_span_data.
+
+
+        let dur_100usec = (dur_usec / 10) % 100;
+        let dur_ms = dur_usec / 1000;
+
+        println!("{}|-({:?}.{:02?})-<<<{}<<<---", prefix, dur_ms, dur_100usec, cur.name() )
 
     }
 
