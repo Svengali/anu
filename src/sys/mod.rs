@@ -1,8 +1,12 @@
+use std::fmt;
+
+use tracing::*;
+
 
 
 pub mod mov;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Status {
     Invalid,
     Starting,
@@ -10,14 +14,13 @@ pub enum Status {
     Stopping,
 }
 
-
-pub trait System {
+pub trait System: fmt::Debug {
     fn startup(&mut self);
     fn shutdown(&mut self);
 }
 
 
-pub trait Ticks {
+pub trait Ticks: fmt::Debug {
     fn tick(&mut self);
 }
 
@@ -54,6 +57,7 @@ pub struct Systems {
     systems: Vec<SystemDetail>,
 }
 
+#[derive(Debug)]
 pub struct Tickables {
     tickables: Vec<Box<dyn Ticks>>,
 }
@@ -66,6 +70,9 @@ impl Tickables {
 
 impl Systems {
     pub fn new() -> Self {
+
+				info!( "Creating new Systems" );
+
         Systems {
             systems: Vec::new(),
         }
@@ -73,6 +80,7 @@ impl Systems {
 
     pub fn add( &mut self, priority: u32, mut system: Box<dyn System> ) {
 
+				debug!( "Starting up new system {:?}", system );
         system.startup();
 
         let detail = SystemDetail {

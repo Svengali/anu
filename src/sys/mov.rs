@@ -4,6 +4,7 @@
 
 use super::{System, Ticks};
 
+#[derive(Debug)]
 pub struct Move {
     pub v: i32,
 }
